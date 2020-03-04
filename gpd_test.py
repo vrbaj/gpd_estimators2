@@ -1,6 +1,9 @@
 from scipy.stats import genpareto
 import matplotlib.pyplot as plt
 import numpy as np
+import warnings
+warnings.filterwarnings("ignore")
+
 
 sigma = 1
 gamma = 0.1
@@ -29,10 +32,12 @@ gamma_moments = -0.5 * (sample_mean ** 2 / sample_variance - 1)
 print("sigma moments est:  {}".format(sigma_moments))
 print("gamma moments est: {}".format(gamma_moments))
 
-print(sigma_moments - sigma_est)
-print(gamma_moments - gamma_est)
-print(1 - sigma/sigma_moments)
+# print(sigma_moments - sigma_est)
+# print(gamma_moments - gamma_est)
+# print(1 - sigma/sigma_moments)
 
 mle_fit = genpareto.fit(random_numbers)
-print(mle_fit)
+print("gamma mle {}".format(mle_fit[0]))
+print("mu mle {}".format(mle_fit[1]))
+print("sigma mle {}".format(mle_fit[2]))
 plt.show()
