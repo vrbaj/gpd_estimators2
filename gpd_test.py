@@ -5,8 +5,8 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-sigma = 1
-gamma = 0.1
+sigma = 1.7
+gamma = 1.5
 mu = 0
 sample_size = 100000
 random_numbers = genpareto.rvs(gamma, loc=mu, scale=sigma, size=sample_size)

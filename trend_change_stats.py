@@ -5,23 +5,26 @@ from datetime import datetime
 from scipy.stats import genpareto
 import matplotlib.pyplot as plt
 import csv
-from colorama import Fore, Back, Style
-
+import pickle
 
 experiments_number = 1000
 
 experiment_len = 1600
 inputs_number = 2
 filter_len = 3
-parameter_change_idx = 1400
+parameter_change_idx = [1400]
 gev_window = 1200
-noise_sigmas = [0.1, 0.5, 1., 1.5, 2., 2.5]
+noise_sigmas = [0.5]
+gpd_params = []
+
+results = []
 
 gpd_result = np.zeros([experiment_len, ])
 elbnd_result = np.zeros([experiment_len, ])
 le_result = np.zeros([experiment_len, ])
 e_result = np.zeros([experiment_len, ])
 snr = np.zeros([experiments_number, ])
+fit = [[0, 0, 0]]
 
 for noise_sigma in noise_sigmas:
     gpd_result = np.zeros([experiment_len, ])
@@ -38,14 +41,14 @@ for noise_sigma in noise_sigmas:
         random_weights = np.random.normal(0, 1, 3)
         noiseless_signal = np.zeros([experiment_len, ])
         for idx in range(experiment_len):
-            if idx == 0 or idx == parameter_change_idx:
+            if idx == 0 or idx in parameter_change_idx:
                 # random_weights = np.random.normal(0, 1, 1)
                 random_weights = np.random.uniform(low=0.1, high=-0.1, size=1)
                 random_add = np.random.uniform(-0.02, 0.02)
             filter_data[idx, 0] = x[idx, 0]
             filter_data[idx, 1] = x[idx, 1]
             filter_data[idx, 2] = 1
-            if idx < parameter_change_idx:
+            if idx < parameter_change_idx[0]:
                 desired_output[idx] = (x[idx, 0] + x[idx, 1]) + 0.01 * idx + np.random.normal(0, noise_sigma, 1)
                 noiseless_signal[idx] = (x[idx, 0] + x[idx, 1]) + 0.01 * idx
             else: # 0.4 1.6
@@ -69,10 +72,14 @@ for noise_sigma in noise_sigmas:
 
                 if dw[i, j] > poted_values[-1]:
                     fit = genpareto.fit(poted_values, floc=[poted_values[-1]])
+                    gpd_params.append(fit)
                     if dw[i, j] >= fit[1]:
                         hpp[i - gev_window, j] = 1 - genpareto.cdf(dw[i, j], fit[0], fit[1], fit[2]) + 1e-50
-        totalhpp1 = np.prod(hpp, axis=1)
+        totalhpp1 = np.log10(np.prod(hpp, axis=1))
         min_index = np.argmin(totalhpp1)
+
+        results.append(totalhpp1)
+
         snr[seed_counter] = 10 * np.log10((np.std(desired_output[gev_window:]) ** 2) / (noise_sigma ** 2))
         # print(Fore.RED + "experiment number: " + str(seed_counter))
         # print(Fore.GREEN + "SNR: " + (str(snr[seed_counter])))
@@ -120,4 +127,27 @@ for noise_sigma in noise_sigmas:
         wr = csv.writer(results_file, dialect='excel')
         wr.writerow([noise_sigma, avg_snr, gpd_detections, elbnd_detections, le_detections, e_detections])
 
+gpd_gamma = []
+gpd_mu = []
+gpd_sigma = []
+for parameters in gpd_params:
+    gpd_gamma.append(parameters[0])
+    gpd_mu.append(parameters[1])
+    gpd_sigma.append(parameters[2])
+plt.figure()
+plt.plot(gpd_gamma)
+plt.title("gamma")
+plt.figure()
+plt.plot(gpd_mu)
+plt.title("mu")
+plt.figure()
+plt.title("sigma")
+plt.plot(gpd_sigma)
+plt.figure()
+plt.title("ese")
+plt.plot(totalhpp1)
 
+
+with open('results_roc.txt', 'wb') as f:
+    pickle.dump(results, f)
+plt.show()
