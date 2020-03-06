@@ -7,24 +7,27 @@ import matplotlib.pyplot as plt
 import csv
 import pickle
 
-experiments_number = 1000
+experiments_number = 1
 
 experiment_len = 1600
 inputs_number = 2
 filter_len = 3
 parameter_change_idx = [1400]
 gev_window = 1200
-noise_sigmas = [0.5]
-gpd_params = []
-
+noise_sigmas = [0.3]
+gpd_params = [[],[],[]]
+gpd_params_dict = {"1": dict.fromkeys(["gamma", "mu", "sigma"], []),
+                   "2": dict.fromkeys(["gamma", "mu", "sigma"], []),
+                   "3": dict.fromkeys(["gamma", "mu", "sigma"], [])}
 results = []
-
+print(gpd_params_dict)
 gpd_result = np.zeros([experiment_len, ])
 elbnd_result = np.zeros([experiment_len, ])
 le_result = np.zeros([experiment_len, ])
 e_result = np.zeros([experiment_len, ])
 snr = np.zeros([experiments_number, ])
-fit = [[0, 0, 0]]
+fit = [0,0,0]
+mu_check = []
 
 for noise_sigma in noise_sigmas:
     gpd_result = np.zeros([experiment_len, ])
@@ -72,9 +75,22 @@ for noise_sigma in noise_sigmas:
 
                 if dw[i, j] > poted_values[-1]:
                     fit = genpareto.fit(poted_values, floc=[poted_values[-1]])
-                    gpd_params.append(fit)
+                    fit = genpareto.fit(poted_values, floc=fit[1], fscale=fit[2])
+                    if j == 0:
+                        print(fit[2])
+                        mu_check.append(poted_values[-1])
+                    gamma = fit[0]
+                    mu = fit[1]
+
+                    sigma = fit[2]
+                    #gpd_params_dict[str(j + 1)]["gamma"].append(gamma)
+                    #gpd_params_dict[str(j + 1)]["mu"].append(mu[0])
+                    gpd_params_dict[str(j + 1)]["sigma"].insert(sigma)
                     if dw[i, j] >= fit[1]:
                         hpp[i - gev_window, j] = 1 - genpareto.cdf(dw[i, j], fit[0], fit[1], fit[2]) + 1e-50
+                        #gpd_params[j].append(fit)
+
+
         totalhpp1 = np.log10(np.prod(hpp, axis=1))
         min_index = np.argmin(totalhpp1)
 
@@ -127,13 +143,11 @@ for noise_sigma in noise_sigmas:
         wr = csv.writer(results_file, dialect='excel')
         wr.writerow([noise_sigma, avg_snr, gpd_detections, elbnd_detections, le_detections, e_detections])
 
-gpd_gamma = []
-gpd_mu = []
-gpd_sigma = []
-for parameters in gpd_params:
-    gpd_gamma.append(parameters[0])
-    gpd_mu.append(parameters[1])
-    gpd_sigma.append(parameters[2])
+gpd_gamma = gpd_params_dict["1"]["gamma"]
+gpd_mu = gpd_params_dict["1"]["mu"]
+gpd_sigma = gpd_params_dict["1"]["sigma"]
+print(gpd_params_dict["1"]["sigma"])
+
 plt.figure()
 plt.plot(gpd_gamma)
 plt.title("gamma")
@@ -146,8 +160,12 @@ plt.plot(gpd_sigma)
 plt.figure()
 plt.title("ese")
 plt.plot(totalhpp1)
+# plt.figure()
+# plt.plot(mu_check)
+# plt.title("mu_check")
 
 
-with open('results_roc.txt', 'wb') as f:
-    pickle.dump(results, f)
+
+# with open('results_roc.txt', 'wb') as f:
+#     pickle.dump(results, f)
 plt.show()

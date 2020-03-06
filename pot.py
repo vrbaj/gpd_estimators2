@@ -16,6 +16,9 @@ def pot(data, method):
         k = max(int((n ** (2/3))/math.log10(math.log10(n))), 1)
     elif method == 4:
         k = max(int(math.log10(n)), 1)
+    if method == 5:
+        # 20%
+        k = max(int(0.35 * n), 1)
     return sorted_data[:k]
 
 
