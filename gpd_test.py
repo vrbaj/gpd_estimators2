@@ -6,9 +6,9 @@ warnings.filterwarnings("ignore")
 
 
 sigma = 1.7
-gamma = 1.5
+gamma = 0.4
 mu = 0
-sample_size = 100000
+sample_size = 10000000
 random_numbers = genpareto.rvs(gamma, loc=mu, scale=sigma, size=sample_size)
 fig, ax = plt.subplots(1, 1)
 ax.hist(random_numbers, density=True, histtype="stepfilled", alpha=0.2, label="rnds")

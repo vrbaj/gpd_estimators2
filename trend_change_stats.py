@@ -7,33 +7,36 @@ import matplotlib.pyplot as plt
 import csv
 import pickle
 
-experiments_number = 1
+print(datetime.now())
+experiments_number = 10000
 
 experiment_len = 1600
 inputs_number = 2
 filter_len = 3
 parameter_change_idx = [1400]
 gev_window = 1200
-noise_sigmas = [0.3]
+noise_sigmas = [0.5]
 gpd_params = [[],[],[]]
 gpd_params_dict = {"1": dict.fromkeys(["gamma", "mu", "sigma"], []),
                    "2": dict.fromkeys(["gamma", "mu", "sigma"], []),
                    "3": dict.fromkeys(["gamma", "mu", "sigma"], [])}
-results = []
+results = {"ese": [],
+           "elbnd": [],
+           "le": []}
 print(gpd_params_dict)
-gpd_result = np.zeros([experiment_len, ])
-elbnd_result = np.zeros([experiment_len, ])
-le_result = np.zeros([experiment_len, ])
-e_result = np.zeros([experiment_len, ])
+gpd_result = np.zeros([experiments_number, ])
+elbnd_result = np.zeros([experiments_number, ])
+le_result = np.zeros([experiments_number, ])
+e_result = np.zeros([experiments_number, ])
 snr = np.zeros([experiments_number, ])
-fit = [0,0,0]
+fit = [0, 0, 0]
 mu_check = []
 
 for noise_sigma in noise_sigmas:
-    gpd_result = np.zeros([experiment_len, ])
-    elbnd_result = np.zeros([experiment_len, ])
-    le_result = np.zeros([experiment_len, ])
-    e_result = np.zeros([experiment_len, ])
+    gpd_result = np.zeros([experiments_number, ])
+    elbnd_result = np.zeros([experiments_number, ])
+    le_result = np.zeros([experiments_number, ])
+    e_result = np.zeros([experiments_number, ])
     snr = np.zeros([experiments_number, ])
     for seed_counter in range(0, experiments_number):
         np.random.seed(seed_counter)
@@ -77,7 +80,7 @@ for noise_sigma in noise_sigmas:
                     fit = genpareto.fit(poted_values, floc=[poted_values[-1]])
                     fit = genpareto.fit(poted_values, floc=fit[1], fscale=fit[2])
                     if j == 0:
-                        print(fit[2])
+                        #print(fit[2])
                         mu_check.append(poted_values[-1])
                     gamma = fit[0]
                     mu = fit[1]
@@ -85,16 +88,17 @@ for noise_sigma in noise_sigmas:
                     sigma = fit[2]
                     #gpd_params_dict[str(j + 1)]["gamma"].append(gamma)
                     #gpd_params_dict[str(j + 1)]["mu"].append(mu[0])
-                    gpd_params_dict[str(j + 1)]["sigma"].insert(sigma)
+                    #gpd_params_dict[str(j + 1)]["sigma"].insert(sigma)
                     if dw[i, j] >= fit[1]:
                         hpp[i - gev_window, j] = 1 - genpareto.cdf(dw[i, j], fit[0], fit[1], fit[2]) + 1e-50
                         #gpd_params[j].append(fit)
 
 
-        totalhpp1 = np.log10(np.prod(hpp, axis=1))
-        min_index = np.argmin(totalhpp1)
+        totalhpp1 = -np.log10(np.prod(hpp, axis=1))
+        min_index = np.argmax(totalhpp1)
+        le = pa.detection.learning_entropy(w, m=1200, order=1)
 
-        results.append(totalhpp1)
+
 
         snr[seed_counter] = 10 * np.log10((np.std(desired_output[gev_window:]) ** 2) / (noise_sigma ** 2))
         # print(Fore.RED + "experiment number: " + str(seed_counter))
@@ -108,7 +112,7 @@ for noise_sigma in noise_sigmas:
         if max_index_elbnd > 199 and max_index_elbnd < 211:
             elbnd_result[seed_counter] = 1
 
-        le = pa.detection.learning_entropy(w, m=1200, order=1)
+
         total_le = np.sum(le, axis=1)
         max_index_le = np.argmax(total_le[-400:])
         # print("max_index LE: ", max_index_le)
@@ -120,11 +124,15 @@ for noise_sigma in noise_sigmas:
         if max_index_e > 199 and max_index_e < 211:
             e_result[seed_counter] = 1
 
-        print("GPD detections: ", sum(gpd_result) / (seed_counter + 1)) #experiments_number)
-        print("ELBND detections: ", sum(elbnd_result) / (seed_counter + 1)) #experiments_number)
-        print("LE detections: ", sum(le_result) / (seed_counter + 1))#experiments_number)
-        print("E detections: ", sum(e_result) / (seed_counter + 1)) #experiments_number)
-        print("AVG SNR: ", sum(snr) / (seed_counter + 1))
+        results["ese"].append(totalhpp1)
+        results["elbnd"].append(elbnd[-400:])
+        results["le"].append(total_le[-400:])
+
+        #print("GPD detections: ", sum(gpd_result) / (seed_counter + 1)) #experiments_number)
+        #print("ELBND detections: ", sum(elbnd_result) / (seed_counter + 1)) #experiments_number)
+        #print("LE detections: ", sum(le_result) / (seed_counter + 1))#experiments_number)
+        #print("E detections: ", sum(e_result) / (seed_counter + 1)) #experiments_number)
+        #print("AVG SNR: ", sum(snr) / (seed_counter + 1))
     gpd_detections = sum(gpd_result) /experiments_number
     elbnd_detections = sum(elbnd_result) / experiments_number
     le_detections = sum(le_result) / experiments_number
@@ -143,29 +151,33 @@ for noise_sigma in noise_sigmas:
         wr = csv.writer(results_file, dialect='excel')
         wr.writerow([noise_sigma, avg_snr, gpd_detections, elbnd_detections, le_detections, e_detections])
 
-gpd_gamma = gpd_params_dict["1"]["gamma"]
-gpd_mu = gpd_params_dict["1"]["mu"]
-gpd_sigma = gpd_params_dict["1"]["sigma"]
-print(gpd_params_dict["1"]["sigma"])
-
-plt.figure()
-plt.plot(gpd_gamma)
-plt.title("gamma")
-plt.figure()
-plt.plot(gpd_mu)
-plt.title("mu")
-plt.figure()
-plt.title("sigma")
-plt.plot(gpd_sigma)
-plt.figure()
-plt.title("ese")
-plt.plot(totalhpp1)
+# gpd_gamma = gpd_params_dict["1"]["gamma"]
+# gpd_mu = gpd_params_dict["1"]["mu"]
+# gpd_sigma = gpd_params_dict["1"]["sigma"]
+# print(gpd_params_dict["1"]["sigma"])
+#
+# #print(results)
+#
+# plt.figure()
+# plt.plot(gpd_gamma)
+# plt.title("gamma")
+# plt.figure()
+# plt.plot(gpd_mu)
+# plt.title("mu")
+# plt.figure()
+# plt.title("sigma")
+# plt.plot(gpd_sigma)
+# plt.figure()
+# plt.title("ese")
+# plt.plot(totalhpp1)
 # plt.figure()
 # plt.plot(mu_check)
 # plt.title("mu_check")
 
 
 
-# with open('results_roc.txt', 'wb') as f:
-#     pickle.dump(results, f)
-plt.show()
+with open('results_roc.txt', 'wb') as f:
+    pickle.dump(results, f)
+# plt.show()
+print(datetime.now())
+
