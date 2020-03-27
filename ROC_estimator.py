@@ -26,7 +26,7 @@ def create_dataset(data):
     return data_set
 
 
-def evaluate_roc(data_set):
+def evaluate_roc(data_set, n):
     points = []
     P = len(data_set["positive"])
     N = len(data_set["negative"])
@@ -34,7 +34,7 @@ def evaluate_roc(data_set):
     up_bound = math.ceil(max([max(data_set["positive"]), max(data_set["negative"])]))
     print("bot bound", bot_bound)
     print("up bound", up_bound)
-    thresholds = np.linspace(bot_bound - 0.01 * bot_bound, up_bound + 0.01 * up_bound, num=500000)
+    thresholds = np.linspace(bot_bound - 0.01 * bot_bound, up_bound + 0.01 * up_bound, num=n)
     # thresholds = [threshold for threshold in range(bot_bound, up_bound)]
     FPR = []
     TPR = []
@@ -80,9 +80,11 @@ print(max(dataset_ese["positive"]))
 print(min(dataset_ese["positive"]))
 print(max(dataset_ese["negative"]))
 print(min(dataset_ese["negative"]))
-fpr_ese, tpr_ese = evaluate_roc(dataset_ese)
-fpr_le, tpr_le = evaluate_roc(dataset_le)
-fpr_elbnd, tpr_elbnd = evaluate_roc(dataset_elbnd)
+fpr_ese, tpr_ese = evaluate_roc(dataset_ese, 1000)
+fpr_le, tpr_le = evaluate_roc(dataset_le, 500000)
+fpr_elbnd, tpr_elbnd = evaluate_roc(dataset_elbnd, 5000000)
+
+pickle.dump([fpr_ese, tpr_ese, fpr_le, tpr_le, fpr_elbnd, tpr_elbnd], open("roc.p", "wb"))
 
 plt.plot(fpr_ese, tpr_ese)
 plt.plot(fpr_elbnd, tpr_elbnd, "r")
